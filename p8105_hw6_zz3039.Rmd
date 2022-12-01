@@ -82,9 +82,16 @@ bw_data =
 skimr::skim(bw_data)
 ```
 
+### Model fitting
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+As there have long held the belief in China that women should eat more during pregnancy, I decided to build a regression model to explore the influence of mothers' weight gain, mothers' weight before pregant and bmi before pregant on the children's birth weight. 
+
 ```{r chunk_propose a model_1}
+bw_data = 
+  bw_data %>% 
+  mutate(
+    mrace = recode_factor(mrace, "1" = "White","2" = "Black", "3" = "Asian", "4" = "Puerto Rican", "8" = "Other")) 
+
 bw_lm = lm(bwt ~ wtgain + ppwt + ppbmi, data = bw_data)
 summary(bw_lm)
 
@@ -94,21 +101,37 @@ bw_lm %>%
 bw_data %>% 
   modelr::add_residuals(bw_lm) %>% 
   modelr::add_predictions(bw_lm) %>% 
-  ggplot(aes(x = pred, y = resid)) + geom_violin()
+  ggplot(aes(x = pred, y = resid)) + geom_violin() +
+  labs(
+    title = "Residual vs Prediction in Linear Model",
+    x = "Prediction Value",
+    y = "Model Residual"
+  )
 ```
 
+The result showed that all three factors were significant in determining children's birth weigth. The Q-Q plot and violin plot showed that the residuals of the model roughly followed normal distribution.
+
+### Model modifying
+
+After confirming that all three factors' significance, I decided to explore if the three factors affect children's birth weight differently within different races of mothers. 
 
 ```{r chunk_propose a model_2}
 bw_lm_nested = lm(bwt ~ wtgain*mrace + ppwt*mrace + ppbmi*mrace, data = bw_data)
-summary(bw_lm)
+summary(bw_lm_nested)
 
-bw_lm %>% 
+bw_lm_nested %>% 
   plot(which = 2)
 
 bw_data %>% 
-  modelr::add_residuals(bw_lm) %>% 
-  modelr::add_predictions(bw_lm) %>% 
-  ggplot(aes(x = pred, y = resid)) + geom_violin() + facet_grid(~mrace)
+  modelr::add_residuals(bw_lm_nested) %>% 
+  modelr::add_predictions(bw_lm_nested) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_violin() + facet_grid(~mrace) +
+  labs(
+    title = "Residual vs Prediction in Nested Model",
+    x = "Prediction Value",
+    y = "Model Residual"
+  )
 ```
 
+The result showed that the three factors have different influences on birth weight of children with different races of mothers. They were all most influential on children with Black mothers, no significant influence were showed on children with Asian mothers.
 
