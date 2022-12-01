@@ -7,6 +7,8 @@ date: "2022-11-30"
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(readr)
+
+set.seed(1)
 ```
 
 ## Problem 2
@@ -21,22 +23,38 @@ homi_data =
       disposition %in% c("Closed by arrest", "Closed without arrest") ~ "solved",
       TRUE ~ "unsolved"),
     status = as.factor(status),
-    victim_age = as.numeric(victim_age)) %>% 
+    victim_age = as.numeric(victim_age),
+    victim_sex = fct_relevel(victim_sex, "Female")) %>% 
   filter(city_state != "Dallas, TX",
          city_state != "Kansas City, MO",
          city_state != "Phoenix, AZ",
          city_state != "Tulsa, AL",
          victim_race == "White"|victim_race == "Black") %>% 
-  select(city_state, everything(), - city, - state)
+  select(city_state, everything(), - city, - state) %>% 
+  drop_na()
 ```
 
-For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
+obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
 
 ```{r}
 bal_data = 
   homi_data %>% 
   filter(city_state == "Baltimore, MD")
 
-  
+fit_bal = 
+  glm(status ~ victim_age + victim_sex + victim_race, data = bal_data, family = binomial) 
+
+fit_bal %>% 
+  broom::glance()
+
+fit_bal %>% 
+  broom::tidy() %>% 
+  mutate(OR = exp(estimate)) %>%
+  select(term, log_OR = estimate, OR, p.value) %>% 
+  knitr::kable(digits = 3)
+
+bal_data %>% 
+  modelr::add_predictions(fit_bal) %>% 
+  mutate(fitted_prob = boot::inv.logit(pred))
 ```
 
