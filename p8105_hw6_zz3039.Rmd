@@ -135,3 +135,9 @@ bw_data %>%
 
 The result showed that the three factors have different influences on birth weight of children with different races of mothers. They were all most influential on children with Black mothers, no significant influence were showed on children with Asian mothers.
 
+## Model Comparison
+
+```{r}
+
+```
+
