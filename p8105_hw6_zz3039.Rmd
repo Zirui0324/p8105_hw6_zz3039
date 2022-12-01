@@ -84,15 +84,31 @@ skimr::skim(bw_data)
 
 
 Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
-```{r chunk_propose a model}
+```{r chunk_propose a model_1}
 bw_lm = lm(bwt ~ wtgain + ppwt + ppbmi, data = bw_data)
 summary(bw_lm)
 
+bw_lm %>% 
+  plot(which = 2)
+
 bw_data %>% 
   modelr::add_residuals(bw_lm) %>% 
-  ggplot(aes(x = bwt, y = resid)) + geom_violin()
+  modelr::add_predictions(bw_lm) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_violin()
+```
+
+
+```{r chunk_propose a model_2}
+bw_lm_nested = lm(bwt ~ wtgain*mrace + ppwt*mrace + ppbmi*mrace, data = bw_data)
+summary(bw_lm)
 
 bw_lm %>% 
   plot(which = 2)
+
+bw_data %>% 
+  modelr::add_residuals(bw_lm) %>% 
+  modelr::add_predictions(bw_lm) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_violin() + facet_grid(~mrace)
 ```
+
 
