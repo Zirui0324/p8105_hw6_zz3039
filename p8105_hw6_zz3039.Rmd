@@ -11,8 +11,6 @@ library(readr)
 
 ## Problem 2
 
-For this problem, limit your analysis those for whom victim_race is white or black. Be sure that victim_age is numeric.
-
 ```{r}
 homi_data = 
   read_csv("./data/homicide-data.csv") %>% 
@@ -28,7 +26,17 @@ homi_data =
          city_state != "Kansas City, MO",
          city_state != "Phoenix, AZ",
          city_state != "Tulsa, AL",
-         victim_race == "White"|victim_race == "Black")
+         victim_race == "White"|victim_race == "Black") %>% 
+  select(city_state, everything(), - city, - state)
 ```
 
+For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
+
+```{r}
+bal_data = 
+  homi_data %>% 
+  filter(city_state == "Baltimore, MD")
+
+  
+```
 
