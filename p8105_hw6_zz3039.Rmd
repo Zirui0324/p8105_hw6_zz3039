@@ -1,0 +1,34 @@
+---
+title: "p8105_hw6_zz3039"
+output: github_document
+date: "2022-11-30"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readr)
+```
+
+## Problem 2
+
+For this problem, limit your analysis those for whom victim_race is white or black. Be sure that victim_age is numeric.
+
+```{r}
+homi_data = 
+  read_csv("./data/homicide-data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(
+    city_state = paste(city, state, sep=", "),
+    status = case_when(
+      disposition %in% c("Closed by arrest", "Closed without arrest") ~ "solved",
+      TRUE ~ "unsolved"),
+    status = as.factor(status),
+    victim_age = as.numeric(victim_age)) %>% 
+  filter(city_state != "Dallas, TX",
+         city_state != "Kansas City, MO",
+         city_state != "Phoenix, AZ",
+         city_state != "Tulsa, AL",
+         victim_race == "White"|victim_race == "Black")
+```
+
+
