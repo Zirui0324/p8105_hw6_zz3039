@@ -15,16 +15,15 @@ set.seed(1)
 
 ## Problem 2
 
+### Homicide Data Import and Manipulation
+
 ```{r}
 homi_data = 
   read_csv("./data/homicide-data.csv") %>% 
   janitor::clean_names() %>% 
   mutate(
     city_state = paste(city, state, sep=", "),
-    status = case_when(
-      disposition %in% c("Closed by arrest", "Closed without arrest") ~ "solved",
-      TRUE ~ "unsolved"),
-    status = as.factor(status),
+    resolved = as.numeric(disposition == "Closed by arrest"),
     victim_age = as.numeric(victim_age),
     victim_sex = fct_relevel(victim_sex, "Female")) %>% 
   filter(city_state != "Dallas, TX",
@@ -36,7 +35,7 @@ homi_data =
   drop_na()
 ```
 
-obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed.
+## Baltimore Data
 
 ```{r}
 bal_data = 
@@ -44,23 +43,57 @@ bal_data =
   filter(city_state == "Baltimore, MD")
 
 fit_bal = 
-  glm(status ~ victim_age + victim_sex + victim_race, data = bal_data, family = binomial) 
+  glm(resolved ~ victim_age + victim_sex + victim_race, data = bal_data, family = binomial) 
 
 fit_bal %>% 
   broom::glance()
 
-fit_bal %>% 
-  broom::tidy() %>% 
-  mutate(OR = exp(estimate)) %>%
-  select(term, log_OR = estimate, OR, p.value) %>% 
-  mutate(term = str_replace(term, "^victim_", "Victim "),
-         term = str_replace(term, "sex", "sex: "),
-         term = str_replace(term, "race", "race: " )) %>% 
-  knitr::kable(digits = 3)
+fit_bal_org = 
+  fit_bal %>% 
+    broom::tidy() %>% 
+    mutate(OR = exp(estimate),
+           conf.low = exp(estimate - 1.96*std.error),
+           conf.high = exp(estimate + 1.96*std.error),
+           CI = str_c("(", conf.low,", ", conf.high, ")")) %>% 
+    select(term, OR, conf.low, conf.high, CI, everything())
+```
 
-bal_data %>% 
-  modelr::add_predictions(fit_bal) %>% 
-  mutate(fitted_prob = boot::inv.logit(pred))
+The estimate and confidence interval of the adjusted odds ratio for solving homicides comparing male victims to female victims keeping all other variables fixed are: **`r fit_bal_org[3, 2]`** and **`r fit_bal_org[3, 5]`**.
+
+
+## Other cities' Data
+
+To obtain a logistic regression model with the OR and CI from the model, I wrote a function to draw the estimated OR and CI from a logistic model. Then, I first mapped logistic regression over each city, then mapped the function over each logistic model for the desired values.
+
+```{r}
+OR_and_CI = function(x) {
+  
+  extract_OR = 
+    x %>% 
+    broom::tidy() %>% 
+    mutate(OR = exp(estimate),
+           conf.low = exp(estimate - 1.96*std.error),
+           conf.high = exp(estimate + 1.96*std.error),
+           CI = str_c("(", conf.low,", ", conf.high, ")")) %>%
+    select(OR, conf.low, conf.high, CI)
+    
+  
+  extract_OR[3,]
+
+}
+
+
+all_city = 
+  homi_data %>% 
+  select(city_state, resolved, victim_age, victim_sex, victim_race) %>% 
+  nest(variables = resolved:victim_race) %>% 
+  mutate(
+    homi_glm = map(variables, ~glm(resolved ~ victim_age + victim_sex + victim_race, family = binomial, data = .x))) %>% 
+  select(city_state, homi_glm) %>% 
+  mutate(variables = map(homi_glm, OR_and_CI)) %>% 
+  select(- homi_glm) %>% 
+  unnest(cols = variables) 
+
 ```
 
 
@@ -83,6 +116,7 @@ bw_data =
 
 skimr::skim(bw_data)
 ```
+
 
 ### Model fitting
 
@@ -175,4 +209,4 @@ cv_bw %>%
   )
 ```
 
-The violin plot indicated that the prediction error of the last two models were smaller than the model I fitted. Which is a sad news I have to accept.
+The violin plot indicated that the prediction error of the last two models were smaller than the model I fitted. Which was a sad news I had to accept.
