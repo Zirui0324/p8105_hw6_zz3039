@@ -7,7 +7,9 @@ date: "2022-11-30"
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(readr)
-
+library(modelr)
+library(mgcv)
+library(purrr)
 set.seed(1)
 ```
 
@@ -138,6 +140,39 @@ The result showed that the three factors have different influences on birth weig
 ## Model Comparison
 
 ```{r}
-
+model_1 = lm(bwt ~ blength + gaweeks, data = bw_data)
+model_2 = lm(bwt ~ (bhead + blength + babysex)^3, data = bw_data)
 ```
 
+```{r}
+cv_bw = 
+  crossv_mc(bw_data, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)) %>% 
+  mutate(
+    model_0  = map(train, ~lm(bwt ~ wtgain*mrace + ppwt*mrace + ppbmi*mrace, data = .x)),
+    model_1  = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+    model_2  = map(train, ~lm(bwt ~ (bhead + blength + babysex)^3, data = .x))) %>% 
+  mutate(
+    rmse_model_0 = map2_dbl(model_0, test, ~rmse(model = .x, data = .y)),
+    rmse_model_1 = map2_dbl(model_1, test, ~rmse(model = .x, data = .y)),
+    rmse_model_2 = map2_dbl(model_2, test, ~rmse(model = .x, data = .y)))
+
+cv_bw %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin() +
+  labs(
+    title = "RMSE of Different Models",
+    x = "Models",
+    y = "RMSE"
+  )
+```
+
+The violin plot indicated that the prediction error of the last two models were smaller than the model I fitted. Which is a sad news I have to accept.
